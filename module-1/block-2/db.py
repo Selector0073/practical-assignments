@@ -1,8 +1,15 @@
 from peewee import *
 from playhouse.postgres_ext import *
+import psycopg2
 import datetime
 
-db = PostgresqlExtDatabase('Weather', user='weather', password='', host='localhost', port=5432)
+db = PostgresqlExtDatabase(
+    'Weather',
+    user='weather',
+    password='weather',
+    host='127.0.0.1',
+    port=5432
+)
 
 class BaseModel(Model):
     class Meta:

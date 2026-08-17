@@ -10,7 +10,7 @@ Weather Monitor is a simple console-based Python application that retrieves weat
 |--------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | **requests** | The de facto standard HTTP client for Python. Simpler and more ergonomic than the built-in `urllib` for making a GET request and reading the response body.                                                   |
 | **peewee**   | A small, expressive ORM that maps the `Weather` table to a plain Python class (`BaseModel`/`Weather`). It avoids writing raw SQL for simple create/select operations and keeps `db.py` short and declarative. |
-
+| **SQLite**   | A file-based, zero-configuration database — ideal for a single-user local logging tool where a full database server would be unnecessary overhead.                                                            |
 
 ## 3. Architecture
 
@@ -38,7 +38,6 @@ Responsible purely for persistence, isolated from the networking and CLI logic i
 Install dependencies:
 ```bash
 poetry install
-sudo docker-compose up
 ```
 
 Run:
@@ -58,13 +57,10 @@ poetry run python3 main.py history
 
 ![history](image-2.webp)
 
-**Contents of the PostgreSQL database:**
+**Contents of the SQLite database:**
 
-![PostgreSQL contents](image-1.webp)
+![db.sqlite contents](image-1.webp)
 
 ## 6. Sources
 
-- [Peewee Docs](https://docs.peewee-orm.com/en/latest/)
-- [Geek for geeks](https://www.geeksforgeeks.org/python/command-line-arguments-in-python/)
-- [Requests docs](https://docs.python-requests.org/en/latest/index.html)
-- [W3](https://www.w3schools.com/python/python_json.asp)
+- [PostgreSQL docker](https://www.docker.com/blog/how-to-use-the-postgres-docker-official-image/#Start-a-Postgres-instance)
