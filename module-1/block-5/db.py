@@ -1,13 +1,7 @@
 import peewee
 from playhouse.postgres_ext import *
 
-db = PostgresqlExtDatabase(
-    'Money',
-    user='bank',
-    password='password',
-    host='localhost',
-    port=5432,
-)
+db = DatabaseProxy()
 
 class BaseModel(Model):
     class Meta:
@@ -18,7 +12,19 @@ class Money(BaseModel):
     owner = TextField(unique=True)
     balance = DecimalField(default=0, constraints=[peewee.Check('balance >= 0.0')])
 
-def init_db():
+def init_db(status):
+    if status:
+        database = SqliteDatabase(':memory:')
+    else:
+        database = PostgresqlExtDatabase(
+            'Money',
+            user='bank',
+            password='password',
+            host='localhost',
+            port=5432,
+        )
+
+    db.initialize(database)
     db.connect()
     db.create_tables([Money], safe=True)
 
@@ -37,5 +43,9 @@ class DataBase:
         Money.create(owner=owner, balance=balance)
 
     @staticmethod
-    def status():
+    def get_all_accounts():
         return Money.select().order_by(Money.id)
+
+    @staticmethod
+    def get_by_id(id):
+        return Money.get(Money.id == id)

@@ -1,7 +1,8 @@
 from db import init_db, DataBase
 from fill_data import fill_random_data
-import sys
+import sys, os
 import peewee
+from dotenv import load_dotenv
 from decimal import Decimal
 
 class RuntimeError(Exception):
@@ -31,12 +32,26 @@ class Account:
             raise RuntimeError("almount must be >0.0")
 
     @staticmethod
-    def status():
+    def get_all_accounts():
         print("Banking system — Selector0073")
         print(f"{'ID':<4} | {'Name':<12} | {'Balance':>8}")
         print("-" * 30)
-        for row in DataBase.status():
+        for row in DataBase.get_all_accounts():
             print(f"{row.id:<4} | {row.owner:<12} | {round(row.balance, 2):>8}")
+
+    @staticmethod
+    def get_balance():
+        try:
+            id = int(sys.argv[2])
+        except IndexError:
+            raise RuntimeError("Parameter id needed")
+        except (ValueError, TypeError):
+            raise RuntimeError("id must be integer")
+        try:
+            data = DataBase.get_by_id(id)
+            print(f"{data.id} | {data.owner} | {round(data.balance, 2)}")
+        except peewee.DoesNotExist:
+            raise RuntimeError("Account does not exist")
 
     @staticmethod
     def create_account():
@@ -53,27 +68,34 @@ class Account:
         except peewee.IntegrityError:
             raise RuntimeError("This user already exists")
 
-        print(f"User {owner} created")
+        print(f"User \"{owner}\" created")
 
 
 
 def main():
     dispatch = {
         "transaction": Account.transaction,
-        "status": Account.status,
+        "get_all_accounts": Account.get_all_accounts,
+        "get": Account.get_balance,
         "create_account": Account.create_account,
         "fill-data": fill_random_data,
     }
 
     try:
-        init_db()
+        load_dotenv()
+        TESTING = os.getenv("TESTNG") == "true"
+    except:
+        raise RuntimeError("Failed to connect to .env")
+
+    try:
+        init_db(TESTING)
     except peewee.DatabaseError:
         raise RuntimeError("Failed to initialize data base")
 
     try:
         dispatch[sys.argv[1]]()
     except IndexError:
-        raise RuntimeError("Parameter needed (transaction, status, create_account, fill-data)")
+        raise RuntimeError("Parameter needed (transaction, get, get_all_accounts, create_account, fill-data)")
     except KeyError:
         raise RuntimeError("Such parameter not found")
 
