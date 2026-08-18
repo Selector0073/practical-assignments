@@ -35,6 +35,11 @@ Responsible purely for persistence, isolated from the networking and CLI logic i
 
 ## 4. How to Run It
 
+Start PostgreSQL:
+```bash
+docker-compose up
+```
+
 Install dependencies:
 ```bash
 poetry install
