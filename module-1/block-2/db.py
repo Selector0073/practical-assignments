@@ -28,5 +28,5 @@ def add_data(temperature):
     Weather.create(temperature=temperature)
 
 def list_data():
-    for weather in Weather.select():
+    for weather in Weather.select().order_by(Weather.time.desc()):
         print(f"<{weather.time}> <{weather.temperature}°C> \n---")

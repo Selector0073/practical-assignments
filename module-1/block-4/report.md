@@ -65,7 +65,7 @@ poetry run python3 main.py transaction <from_id> <to_id> <amount>
 
 To connect to PostgreSQL directly, use:
 ```bash
-psql -U bank -d Money -h localhost -p 5432
+docker compose exec db psql -U bank -d Money -h localhost -p 5432
 ```
 
 ## 6. Screenshots
