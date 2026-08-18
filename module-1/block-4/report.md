@@ -68,7 +68,13 @@ To connect to PostgreSQL directly, use:
 psql -U bank -d Money -h localhost -p 5432
 ```
 
-## 6. Sources
+## 6. Screenshots
+
+![service](image-1.webp)
+
+![service](image-2.webp)
+
+## 7. Sources
 
 - [Peewee docs](http://docs.peewee-orm.com/)
 - [Mimesis docs](https://mimesis.name/master/index.html)
