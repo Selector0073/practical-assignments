@@ -115,5 +115,3 @@ docker compose exec db psql -U bank -d Money -h localhost -p 5432
 - [Mimesis docs](https://mimesis.name/master/index.html)
 - [Pytest docs](https://docs.pytest.org/)
 
-> [!NOTE]
-> I didn't want to do unit tests manually, so I paid [Hermes Agent](https://hermes-agent.nousresearch.com/) `$0.07805` •ᴗ•
