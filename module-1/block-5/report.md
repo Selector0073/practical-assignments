@@ -1,80 +1,119 @@
-# Bank Money Manager
+# Bank Money Manager 
 
 ## 1. Overview
 
-Bank Money Manager is a simple console-based Python application for managing user balances of a mock bank through PostgreSQL. The project consists of three parts: `main.py` handles command processing and user interaction via command-line arguments, `db.py` handles all persistence-related logic (creating tables, reading and writing data, transferring funds), and `fill_data.py` populates the database with random test accounts.
+The project is a console application in Python for managing user account balances of a mock bank through PostgreSQL. Unlike the description in the assignment, the testing setup is built around an existing peewee ORM model rather than "raw" `psycopg2`. The project consists of the following files:
+
+- `db.py` - responsible only for the database connection and the ORM model.
+- `account_service.py` - the `AccountService` class, containing all banking business logic and accepting a connection as a parameter (which makes it easy to test).
+- `main.py` - the CLI interface: reads `sys.argv`, validates input, and calls into `AccountService`.
+- `fill_data.py` - populates the database with random test accounts.
+- `conftest.py` - shared pytest fixtures (database connection, table creation, table cleanup, service instance, funded accounts).
+- `test_main.py` - the tests themselves, organized into classes.
+
+**Deviations from the assignment description:** the test file is named `test_main.py` rather than `test_bank.py`, as stated in step 1 of the instructions; accordingly, the business-logic source file is named `account_service.py` rather than `bank.py`, and there was no separate refactoring of a `bank.py` file - the CLI was written directly on top of an already-existing `AccountService`.
 
 ## 2. Technologies Used and Why
 
-| Technology       | Why it was chosen                                                                                                                                                                                                     |
-|------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **peewee**       | A small, expressive ORM that maps the `Money` table to a plain Python class (`BaseModel`/`Money`), used together with `playhouse.postgres_ext` for PostgreSQL-specific features (e.g. `PostgresqlExtDatabase`). Keeps `db.py` short and declarative for simple insert/select/update operations. |
-| **psycopg2-binary** | The standard PostgreSQL driver for Python; required by peewee's `PostgresqlExtDatabase` to actually talk to the database over the network.                                                                          |
-| **mimesis**      | A library for generating realistic test data (in this project - random user names for the UK locale), used in `fill_data.py` to quickly populate the database with test accounts. |
-| **Decimal**      | Used instead of `float` for the transfer amount in `transaction_db` to avoid rounding errors when working with monetary values.                                                                                |
+| Technology | Why it was chosen |
+|---|---|
+| **peewee** (`playhouse.postgres_ext.PostgresqlExtDatabase`) | A lightweight ORM that maps the `accounts` table (the `Money` model) to a Python class; provides a convenient `atomic()` context for the money-transfer transaction. |
+| **psycopg2** (implicitly, via peewee) | The PostgreSQL driver required by peewee for `PostgresqlExtDatabase` to work. |
+| **mimesis** | Generation of realistic test data (random names, UK locale) in `fill_data.py`. |
+| **pytest** | A framework for writing isolated tests with fixtures (`conftest.py`). |
+| **Decimal** | Used for all monetary amounts instead of `float`, to avoid rounding errors; transfer amounts are rounded to 2 decimal places. |
 
 ## 3. Architecture
 
-### 3.1 main.py
+### 3.1 db.py
 
-Responsible for processing user commands and validating them before hitting the database:
+Responsible purely for persistence:
 
-- **transaction()** - reads the sender ID, recipient ID, and transfer amount from `sys.argv`, validates the types and that the amount is positive, then calls `transaction_db()`.
-- **status()** - delegates to `status_db()` to print the list of all accounts and their balances.
-- **add_account()** - reads the owner's name and starting balance from the command-line arguments and calls `add_account_db()`, handling invalid parameters.
-- **main()** - builds the command dispatch table (`transaction`, `status`, `add_account`, `fill-data`), initializes the database connection via `init_db()`, reads `sys.argv[1]` as the requested command, and calls the matching function, handling a missing or unknown command with a clear error message and a non-zero exit code.
+- **db** - a `PostgresqlExtDatabase` connected to the `Money` database on `localhost:5432` with the `bank` user's credentials.
+- **BaseModel / Money** - an ORM model with fields `id` (auto-increment), `owner` (unique text field), and `balance` (a `DecimalField` with the constraint `balance >= 0.0`).
+- **init_db()** - opens the connection and creates the `Money` table if it doesn't already exist (`safe=True`).
 
-### 3.2 db.py
+### 3.2 account_service.py
 
-Responsible purely for persistence, isolated from the CLI logic in `main.py`:
+The `AccountService` class encapsulates the banking logic. Its constructor takes a database connection, so the same class is used both by the CLI and by the tests. Its methods:
 
-- **db** - a peewee `PostgresqlExtDatabase` connecting to the `Money` database on `localhost:5432` with `bank` credentials.
-- **BaseModel / Money** - an ORM model with fields `id` (primary key), `owner` (unique text field - the account holder's name), and `balance` (a decimal field with the constraint `balance >= 0.0`, which prevents the balance from going negative).
-- **init_db()** - opens the connection to the database and creates the `Money` table if it doesn't already exist (`safe=True`).
-- **transaction_db(from_id, to_id, amount)** - looks up both accounts by ID, checks that the sender has sufficient funds, then atomically decreases the sender's balance and increases the recipient's balance, saving both records.
-- **status_db()** - prints a table of all accounts, sorted by `id`, in a formatted layout (ID, name, balance).
-- **add_account_db(owner, balance)** - creates a new `Money` record with the given owner and starting balance, handling an attempt to create a duplicate via `IntegrityError`.
+- **create_account(owner, balance=0)** - creates an account and returns its `id`; the amount is cast to `Decimal`.
+- **get_balance(account_id)** - returns the balance, or raises `ValueError` if the account isn't found.
+- **transfer(from_id, to_id, amount)** - atomically transfers funds between accounts. Raises `ValueError` for a non-positive amount, a missing account, or insufficient funds. Uses peewee's `connection.atomic()` so both balance updates succeed or fail together.
+- **get_all_accounts()** - returns a list of all accounts, ordered by `id`.
+- **get_account(account_id)** - an internal helper that fetches a single account or raises `ValueError` (catching `peewee.DoesNotExist`).
 
-### 3.3 fill_data.py
+### 3.3 main.py
 
-A helper script for populating the database with test data:
+The CLI interface. The `Account` class holds static methods that parse `sys.argv`, validate types, and delegate calls to a shared `AccountService`. Validation and business-logic errors are converted into a custom `RuntimeError` class, which immediately prints a message and exits the process (`sys.exit(1)`). Supported commands:
 
-- **fill_random_data()** - uses `mimesis.Person` (UK locale) to generate 10 random names and random balance amounts between 1 and 1000, creating a new account for each one via `add_account_db()`.
+- `transaction <from_id> <to_id> <amount>` - transfer funds.
+- `status` - print the table of all accounts and balances.
+- `get <id>` - print a single account's balance.
+- `create_account <owner> <balance>` - create a new account (handling `peewee.IntegrityError` if the owner already exists).
+- `fill-data` - populate the database with random test accounts.
+
+`main()` initializes the database via `init_db()` and dispatches on `sys.argv[1]`, handling a missing or unknown command with a clear message.
+
+### 3.4 fill_data.py
+
+Uses `mimesis.Person` (UK locale) to generate 10 random names and random balances between 1 and 1000, creating a new account for each via `AccountService.create_account`. Duplicate owners (`peewee.IntegrityError`) are silently skipped.
+
+### 3.5 conftest.py - Test Fixtures
+
+- **db_connection** (scope=`session`) - enables `autocommit = True` and connects to the database before the whole test session.
+- **create_tables** (scope=`session`, autouse=`True`) - creates the `Money` table once.
+- **clean_tables** (autouse=`True`) - clears the `Money` table before **and** after every test.
+- **service** - an `AccountService` instance ready for use in tests.
+- **funded_accounts** - creates two accounts ("Alice" - 1000, "Bob" - 500) and returns their `id`s.
+
+The implementation fully matches the fixture structure described in the assignment.
+
+### 3.6 test_main.py - The Tests
+
+- **TestCreateAccount** - creating an account with the default balance (0) and with an initial balance.
+- **TestGetBalance** - retrieving the balance of an existing account, and checking that a `ValueError` is raised for a nonexistent account.
+- **TestTransfer** - a successful transfer (checking both balances), transferring all funds (balance = 0), a transfer with insufficient balance (exception + balances unchanged), a negative-amount transfer (exception), a transfer from a nonexistent account (exception), a transfer to a nonexistent account (exception), and multiple consecutive transfers (checking the final balances).
+
+All scenarios required by the assignment are implemented; each test class corresponds to one `AccountService` method.
 
 ## 4. How to Run It
 
-Start PostgreSQL:
+Start PostgreSQL (e.g. via Docker Compose):
 ```bash
 docker-compose up
 ```
 
 Install dependencies:
 ```bash
-poetry install
+pip install pytest peewee psycopg2-binary mimesis
 ```
 
-Run commands:
+Run the test suite:
 ```bash
-poetry run python3 main.py fill-data
-poetry run python3 main.py add_account <name> <balance>
-poetry run python3 main.py status
-poetry run python3 main.py transaction <from_id> <to_id> <amount>
+pytest -v
+```
+
+Run the application:
+```bash
+python3 main.py fill-data
+python3 main.py create_account <name> <balance>
+python3 main.py status
+python3 main.py get <id>
+python3 main.py transaction <from_id> <to_id> <amount>
 ```
 
 ## 5. DB Connect
 
-To connect to PostgreSQL directly, use:
 ```bash
 docker compose exec db psql -U bank -d Money -h localhost -p 5432
 ```
 
-## 6. Screenshots
-
-![service](image-1.webp)
-
-![service](image-2.webp)
-
-## 7. Sources
+## 6. Sources
 
 - [Peewee docs](http://docs.peewee-orm.com/)
 - [Mimesis docs](https://mimesis.name/master/index.html)
+- [Pytest docs](https://docs.pytest.org/)
+
+> [!NOTE]
+> I didn't want to do unit tests manually, so I paid [Hermes Agent](https://hermes-agent.nousresearch.com/))
