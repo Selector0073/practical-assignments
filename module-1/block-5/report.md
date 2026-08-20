@@ -109,11 +109,16 @@ python3 main.py transaction <from_id> <to_id> <amount>
 docker compose exec db psql -U bank -d Money -h localhost -p 5432
 ```
 
-## 6. Sources
+## 6. Screenshoot
+
+![image-1](image1.webp)
+
+![image-2](image1.webp)
+
+![image-3](image1.webp)
+
+## 7. Sources
 
 - [Peewee docs](http://docs.peewee-orm.com/)
 - [Mimesis docs](https://mimesis.name/master/index.html)
 - [Pytest docs](https://docs.pytest.org/)
-
-> [!NOTE]
-> I didn't want to do unit tests manually, so I paid [Hermes Agent](https://hermes-agent.nousresearch.com/))
