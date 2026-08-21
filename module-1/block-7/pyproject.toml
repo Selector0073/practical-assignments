@@ -1,0 +1,18 @@
+[project]
+name = "block-7"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Selector0073"}
+]
+license = "MIT License"
+requires-python = ">=3.14"
+dependencies = [
+    "peewee (>=4.3.0,<5.0.0)",
+    "psycopg2-binary (>=2.9.12,<3.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
