@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Feedback</title>
+    <style>
+        body { font-family: sans-serif; max-width: 560px; margin: 40px auto; }
+        label { display: block; margin-top: 12px; }
+        input, textarea { width: 100%; padding: 6px; box-sizing: border-box; }
+        .error { color: #b00020; padding: 8px; background: #fdd; margin-bottom: 12px; }
+        button { margin-top: 16px; padding: 8px 20px; }
+    </style>
+</head>
+<body>
+    <h1>Feedback form</h1>
+
+    {% if error %}
+        <div class="error">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="{% url 'feedback_form' %}">
+        {% csrf_token %}
+        <label for="name">Name</label>
+        <input type="text" id="name" name="name" required value="{{ name|default_if_none:'' }}">
+
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required value="{{ email|default_if_none:'' }}">
+
+        <label for="message">Message</label>
+        <textarea id="message" name="message" rows="5" required>{{ message|default_if_none:'' }}</textarea>
+
+        <button type="submit">Submit feedback</button>
+    </form>
+</body>
+</html>

@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Feedback received</title>
+    <style>
+        body { font-family: sans-serif; max-width: 560px; margin: 40px auto; }
+        .ok { color: #0a6b2f; padding: 10px; background: #d8f5de; }
+    </style>
+</head>
+<body>
+    <div class="ok">
+        <h1>Thank you, {{ feedback.name }}!</h1>
+        <p>Your feedback has been saved.</p>
+        <p><strong>Email:</strong> {{ feedback.email }}</p>
+        <p><strong>Message:</strong></p>
+        <p>{{ feedback.message }}</p>
+    </div>
+    <p><a href="{% url 'feedback_form' %}">Submit another</a></p>
+</body>
+</html>
